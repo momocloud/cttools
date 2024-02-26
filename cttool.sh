@@ -119,6 +119,14 @@ function _get_absolutepath()
     return 0
 }
 
+function _get_abs_path()
+{
+    declare in_path="$1"
+    [ ! -f "$in_path" ] && [ ! -d "$in_path" ] && logger "ERROR" "$LINENO" "$in_path not found!" && return 1
+    
+    readlink -f "$in_path"
+}
+
 function _cp_base()
 {
     declare container_pid="$1"
