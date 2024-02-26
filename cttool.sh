@@ -281,6 +281,8 @@ function ccp()
             return 1
             ;;
     esac
+
+    _cp_base "$_con_pid" "$container_path" "$node_path" "$cp_mode" || logger "ERROR" "$LINENO" "Failed to copy file!" && return 1
 }
 
 function cin()
