@@ -269,12 +269,12 @@ function ccp()
 
     case "$cp_mode" in
         "c2n")
-            container_path="$(awk -F ':' '{print $2}' <<< "$from_path")"
-            node_path="$(get_absolutepath "$to_path")"
+            container_path="$_con_path/$(awk -F ':' '{print $2}' <<< "$from_path")"
+            node_path=".$(get_absolutepath "$to_path")"
             ;;
         "n2c")
-            container_path="$(awk -F ':' '{print $2}' <<< "$to_path" )"
-            node_path="$(get_absolutepath "$from_path")"
+            container_path="$_con_path$(awk -F ':' '{print $2}' <<< "$to_path" )"
+            node_path=".$(get_absolutepath "$from_path")"
             ;;
         *)
             logger "ERROR" "$LINENO" "Error pattern in ccp!"
