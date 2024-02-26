@@ -10,9 +10,9 @@ _con_pid=""
 _con_past_path=""
 _con_path=""
 
-function logger()
+function clogger()
 {
-    [ $# -eq 3 ] || (logger "ERROR" "$LINENO" "Error in funtion logger for params number!" && return 1)
+    [ $# -eq 3 ] || (clogger "ERROR" "$LINENO" "Error in funtion clogger for params number!" && return 1)
     declare -u exec_level="$1"
     declare exec_func="${FUNCNAME[1]}"
     declare exec_lineno="$2"
@@ -50,7 +50,7 @@ function _check_container_tool()
     elif [ -n "$(command -v docker)" ]; then
         container_tool="docker"
     else
-        logger "ERROR" "$LINENO" "Not found container tool!"
+        clogger "ERROR" "$LINENO" "Not found container tool!"
         return 1
     fi
 
@@ -59,25 +59,25 @@ function _check_container_tool()
 
 function _get_container_id_from_exact_name()
 {
-    [ $# -eq 1 ] || (logger "ERROR" "$LINENO" "Error for params number!" && return 1)
+    [ $# -eq 1 ] || (clogger "ERROR" "$LINENO" "Error for params number!" && return 1)
 
     declare container_name="$1"
     declare container_id
 
     if [ "$container_tool" == "crictl" ]; then
         if [ "$(crictl ps | awk 'NR > 1 { if ($(NF-3) == "'"$container_name"'") print $1 }' | wc -l)" -ne 1 ]; then
-            logger "ERROR" "$LINENO" "Failed to get container ID!"
+            clogger "ERROR" "$LINENO" "Failed to get container ID!"
             return 1
         fi
         container_id="$(crictl ps | awk 'NR > 1 { if ($(NF-3) == "'"$container_name"'") print $1 }')"
     elif [ "$container_tool" == "docker" ]; then
         if [ "$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $0}' | wc -l)" -ne 1 ]; then
-            logger "ERROR" "$LINENO" "Failed to get container ID!"
+            clogger "ERROR" "$LINENO" "Failed to get container ID!"
             return 1
         fi
         container_id="$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $2}' | wc -l)"
     else
-        logger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
+        clogger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
         return 1
     fi
 
@@ -86,7 +86,7 @@ function _get_container_id_from_exact_name()
 
 function _get_container_pid()
 {
-    [ $# -eq 1 ] || (logger "ERROR" "$LINENO" "Error for params number!" && return 1)
+    [ $# -eq 1 ] || (clogger "ERROR" "$LINENO" "Error for params number!" && return 1)
 
     declare container_id="$1"
     declare container_pid
@@ -96,24 +96,24 @@ function _get_container_pid()
     elif [ "$container_tool" == "docker" ]; then
         container_pid="$(docker inspect --format '{{.State.Pid}}' "$container_id")"
     else
-        logger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
+        clogger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
         return 1
     fi
 
     if [[ "$container_pid" =~ ^[0-9]+$ ]]; then
         echo "$container_pid"
     else
-        logger "ERROR" "$LINENO" "Failed to get container PID!"
+        clogger "ERROR" "$LINENO" "Failed to get container PID!"
         return 1
     fi
 }
 
 function _get_abs_path()
 {
-    [ $# -eq 1 ] || (logger "ERROR" "$LINENO" "Error for params number!" && return 1)
+    [ $# -eq 1 ] || (clogger "ERROR" "$LINENO" "Error for params number!" && return 1)
 
     declare in_path="$1"
-    [ ! -f "$in_path" ] && [ ! -d "$in_path" ] && logger "ERROR" "$LINENO" "$in_path not found!" && return 1
+    [ ! -f "$in_path" ] && [ ! -d "$in_path" ] && clogger "ERROR" "$LINENO" "$in_path not found!" && return 1
 
     readlink -f "$in_path"
 }
@@ -144,14 +144,14 @@ function cinit()
 {
     declare container_name="$1"
     declare container_path="$2"
-    declare logger_switch="$3"
+    declare clogger_switch="$3"
 
     if [ -z "$container_name" ]; then
-        logger "ERROR" "$LINENO" "Incorrect pattern! Please container_name!"
+        clogger "ERROR" "$LINENO" "Incorrect pattern! Please container_name!"
         return 1
     fi
 
-    if [ -n "$logger_switch" ]; then
+    if [ -n "$clogger_switch" ]; then
         log_file="/tmp/cttool_$(date +"%Y%m%d%H%M%S").log"
     fi
 
@@ -182,9 +182,9 @@ function cinit()
         export _con_pid
         export _con_last_path
 
-        logger "INFO" "$LINENO" "Init success! cname: $_con_name; cid: $_con_cid; pid: $_con_pid; path: $_con_path"
+        clogger "INFO" "$LINENO" "Init success! cname: $_con_name; cid: $_con_cid; pid: $_con_pid; path: $_con_path"
     else
-        logger "ERROR" "$LINENO" "The path $container_path does not exist in container $container_name!"
+        clogger "ERROR" "$LINENO" "The path $container_path does not exist in container $container_name!"
         return 1
     fi
 }
@@ -197,7 +197,7 @@ function ccheck()
 function _con_check_init()
 {
     if [ -z "$_con_path" ] || [ -z "$_con_pid" ]; then
-        logger "ERROR" "$LINENO" "Please use cinit first!"
+        clogger "ERROR" "$LINENO" "Please use cinit first!"
         return 1
     fi
     return 0
@@ -225,9 +225,9 @@ function ccd()
         _con_path="$(nsenter -t "$_con_pid" -m --wd='/' -- sh -c "cd $_con_path; cd $chgpath; pwd")"
         export _con_path
         export _con_last_path
-        logger "INFO" "$LINENO" "Change path to $_con_path"
+        clogger "INFO" "$LINENO" "Change path to $_con_path"
     else
-        logger "ERROR" "$LINENO" "Cannot access folder $chgpath in container $_con_name. Please check..."
+        clogger "ERROR" "$LINENO" "Cannot access folder $chgpath in container $_con_name. Please check..."
         return 1
     fi
 }
@@ -248,7 +248,7 @@ function ccp()
 {
     _con_check_init || return 1
 
-    [ $# -eq 2 ] || (logger "ERROR" "$LINENO" "Error for params number!" && return 1)
+    [ $# -eq 2 ] || (clogger "ERROR" "$LINENO" "Error for params number!" && return 1)
 
     declare from_path="$1"
     declare to_path="$2"
@@ -260,7 +260,7 @@ function ccp()
     elif [[ "$to_path" =~ ':' ]]; then
         cp_mode='n2c'
     else
-        logger "ERROR" "$LINENO" "Error pattern in ccp!"
+        clogger "ERROR" "$LINENO" "Error pattern in ccp!"
         return 1
     fi
 
@@ -277,12 +277,12 @@ function ccp()
             node_path=".$(get_absolutepath "$from_path")"
             ;;
         *)
-            logger "ERROR" "$LINENO" "Error pattern in ccp!"
+            clogger "ERROR" "$LINENO" "Error pattern in ccp!"
             return 1
             ;;
     esac
 
-    _cp_base "$_con_pid" "$container_path" "$node_path" "$cp_mode" || logger "ERROR" "$LINENO" "Failed to copy file!" && return 1
+    _cp_base "$_con_pid" "$container_path" "$node_path" "$cp_mode" || clogger "ERROR" "$LINENO" "Failed to copy file!" && return 1
 }
 
 function cin()
@@ -299,7 +299,7 @@ function cin()
                 if [ "$(crictl exec -it "$_con_cid" "$shell_type" -c "test -e $in_path" 2>/dev/null)" ]; then
                     crictl exec -it "$_con_cid" "$shell_type"
                 else
-                    logger "ERROR" "$LINENO" "Cannot access file $in_path in container $_con_name. Please check..."
+                    clogger "ERROR" "$LINENO" "Cannot access file $in_path in container $_con_name. Please check..."
                     return 1
                 fi
                 ;;
@@ -307,12 +307,12 @@ function cin()
                 if [ "$(docker exec -it "$_con_cid" "$shell_type" -c "test -e $in_path" 2>/dev/null)" ]; then
                     docker exec -it "$_con_cid" "$shell_type"
                 else
-                    logger "ERROR" "$LINENO" "Cannot access file $in_path in container $_con_name. Please check..."
+                    clogger "ERROR" "$LINENO" "Cannot access file $in_path in container $_con_name. Please check..."
                     return 1
                 fi
                 ;;
             *)
-                logger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
+                clogger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
                 return 1
                 ;;
         esac
@@ -366,7 +366,7 @@ function __get_con_names()
                 mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
                 ;;
             *)
-                logger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
+                clogger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
                 return 1
                 ;;
         esac
