@@ -71,11 +71,11 @@ function _get_container_id_from_exact_name()
         fi
         container_id="$(crictl ps | awk 'NR > 1 { if ($(NF-3) == "'"$container_name"'") print $1 }')"
     elif [ "$container_tool" == "docker" ]; then
-        if [ "$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $1}' | wc -l)" -ne 1 ]; then
+        if [ "$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $0}' | wc -l)" -ne 1 ]; then
             logger "ERROR" "$LINENO" "Failed to get container ID!"
             return 1
         fi
-        container_id="$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $1}' | wc -l)"
+        container_id="$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $2}' | wc -l)"
     else
         logger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
         return 1
