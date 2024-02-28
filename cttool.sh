@@ -75,7 +75,7 @@ function _get_container_id_from_exact_name()
             clogger "ERROR" "$LINENO" "Failed to get container ID!"
             return 1
         fi
-        container_id="$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $2}' | wc -l)"
+        container_id="$(docker container ls --format '{{.Names}} {{.ID}}' | awk '{if ($1 == "'"$container_name"'") print $2}')"
     else
         clogger "ERROR" "$LINENO" "Not supported container tool $container_tool!"
         return 1
@@ -169,7 +169,7 @@ function cinit()
     container_pid="$(_get_container_pid "$container_cid")"
     [ -z "$container_pid" ] && return 1
 
-    if nsenter -t "$container_pid" -m --wd='/' -- sh -c "test -e $container_path"; then
+    if nsenter -t "$container_pid" -m -- sh -c "test -e $container_path"; then
         _con_path="$container_path"
         _con_name="$container_name"
         _con_cid="$container_cid"
@@ -206,7 +206,7 @@ function _con_check_init()
 function cls()
 {
     _con_check_init || return 1
-    nsenter -t "$_con_pid" -m --wd='/' -- sh -c "cd $_con_path; ls $*"
+    nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; ls $*"
 }
 
 function ccd()
@@ -214,7 +214,7 @@ function ccd()
     _con_check_init || return 1
     declare chgpath="$1"
 
-    if nsenter -t "$_con_pid" -m --wd='/' -- sh -c "cd $_con_path; test -d $chgpath" || { [ -n "$_con_last_path" ] && [ "$chgpath" == '-' ]; }; then
+    if nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; test -d $chgpath" || { [ -n "$_con_last_path" ] && [ "$chgpath" == '-' ]; }; then
         if [ "$chgpath" == '-' ]; then
             declare tmp_path="$_con_last_path"
         fi
@@ -222,7 +222,7 @@ function ccd()
         if [ "$chgpath" == '-' ]; then
             chgpath="$tmp_path"
         fi
-        _con_path="$(nsenter -t "$_con_pid" -m --wd='/' -- sh -c "cd $_con_path; cd $chgpath; pwd")"
+        _con_path="$(nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; cd $chgpath; pwd")"
         export _con_path
         export _con_last_path
         clogger "INFO" "$LINENO" "Change path to $_con_path"
@@ -241,7 +241,7 @@ function cpwd()
 function cexec()
 {
     _con_check_init || return 1
-    nsenter -t "$_con_pid" -m --wd='/' -- sh -c "cd $_con_path; $*"
+    nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; $*"
 }
 
 function ccp()
@@ -270,11 +270,11 @@ function ccp()
     case "$cp_mode" in
         "c2n")
             container_path="$_con_path/$(awk -F ':' '{print $2}' <<< "$from_path")"
-            node_path=".$(get_absolutepath "$to_path")"
+            node_path=".$(_get_abs_path "$to_path")"
             ;;
         "n2c")
-            container_path="$_con_path$(awk -F ':' '{print $2}' <<< "$to_path" )"
-            node_path=".$(get_absolutepath "$from_path")"
+            container_path="$_con_path/$(awk -F ':' '{print $2}' <<< "$to_path")"
+            node_path=".$(_get_abs_path "$from_path")"
             ;;
         *)
             clogger "ERROR" "$LINENO" "Error pattern in ccp!"
@@ -330,7 +330,7 @@ function __get_dirs()
     declare opts
 
     [ -z "$cur" ] && cur='./'
-    opts="$(nsenter -t "$_con_pid" -m --wd='/' -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -d '"$cur"')')" || return 1
+    opts="$(nsenter -t "$_con_pid" -m -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -d '"$cur"')')" || return 1
 
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 }
@@ -342,7 +342,7 @@ function __get_files()
     declare opts
 
     [ -z "$cur" ] && cur='./'
-    opts="$(nsenter -t "$_con_pid" -m --wd='/' -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -f '"$cur"')')" || return 1
+    opts="$(nsenter -t "$_con_pid" -m -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -f '"$cur"')')" || return 1
 
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 }
