@@ -9,6 +9,7 @@ _con_cid=""
 _con_pid=""
 _con_past_path=""
 _con_path=""
+_con_sh=""
 
 function clogger()
 {
@@ -127,10 +128,10 @@ function _cp_base()
 
     case "$cp_mode" in
         "c2n")
-            nsenter -t "$container_pid" -m --wd='/' -- sh -c "cp -a $container_path $node_path"
+            nsenter -t "$container_pid" -m --wd='/' -- "$_con_sh" -c "cp -a $container_path $node_path"
             ;;
         "n2c")
-            nsenter -t "$container_pid" -m --wd='/' -- sh -c "cp -a $node_path $container_path"
+            nsenter -t "$container_pid" -m --wd='/' -- "$_con_sh" -c "cp -a $node_path $container_path"
             ;;
         *)
             echo "Error pattern!"
@@ -144,11 +145,18 @@ function cinit()
 {
     declare container_name="$1"
     declare container_path="$2"
-    declare clogger_switch="$3"
+    declare container_sh="$3"
+    declare clogger_switch="$4"
 
     if [ -z "$container_name" ]; then
         clogger "ERROR" "$LINENO" "Incorrect pattern! Please container_name!"
         return 1
+    fi
+
+    if [ -n "$container_sh" ]; then
+        _con_sh="$container_sh"
+    else
+	_con_sh="sh"
     fi
 
     if [ -n "$clogger_switch" ]; then
@@ -169,7 +177,7 @@ function cinit()
     container_pid="$(_get_container_pid "$container_cid")"
     [ -z "$container_pid" ] && return 1
 
-    if nsenter -t "$container_pid" -m -- sh -c "test -e $container_path"; then
+    if nsenter -t "$container_pid" -m -- "$_con_sh" -c "test -e $container_path"; then
         _con_path="$container_path"
         _con_name="$container_name"
         _con_cid="$container_cid"
@@ -206,7 +214,7 @@ function _con_check_init()
 function cls()
 {
     _con_check_init || return 1
-    nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; ls $*"
+    nsenter -t "$_con_pid" -m -- "$_con_sh" -c "cd $_con_path; ls $*"
 }
 
 function ccd()
@@ -214,7 +222,7 @@ function ccd()
     _con_check_init || return 1
     declare chgpath="$1"
 
-    if nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; test -d $chgpath" || { [ -n "$_con_last_path" ] && [ "$chgpath" == '-' ]; }; then
+    if nsenter -t "$_con_pid" -m -- "$_con_sh" -c "cd $_con_path; test -d $chgpath" || { [ -n "$_con_last_path" ] && [ "$chgpath" == '-' ]; }; then
         if [ "$chgpath" == '-' ]; then
             declare tmp_path="$_con_last_path"
         fi
@@ -222,7 +230,7 @@ function ccd()
         if [ "$chgpath" == '-' ]; then
             chgpath="$tmp_path"
         fi
-        _con_path="$(nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; cd $chgpath; pwd")"
+        _con_path="$(nsenter -t "$_con_pid" -m -- "$_con_sh" -c "cd $_con_path; cd $chgpath; pwd")"
         export _con_path
         export _con_last_path
         clogger "INFO" "$LINENO" "Change path to $_con_path"
@@ -241,7 +249,7 @@ function cpwd()
 function cexec()
 {
     _con_check_init || return 1
-    nsenter -t "$_con_pid" -m -- sh -c "cd $_con_path; $*"
+    nsenter -t "$_con_pid" -m -- "$_con_sh" -c "cd $_con_path; $*"
 }
 
 function ccp()
@@ -292,7 +300,7 @@ function cin()
     declare in_path="$2"
 
     if [ -z "$shell_type" ]; then
-        shell_type="/bin/sh"
+        shell_type="$_con_sh"
     else
         case "$container_tool" in
             "crictl")
@@ -330,7 +338,7 @@ function __get_dirs()
     declare opts
 
     [ -z "$cur" ] && cur='./'
-    opts="$(nsenter -t "$_con_pid" -m -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -d '"$cur"')')" || return 1
+    opts="$(nsenter -t "$_con_pid" -m -- "$_con_sh" -c 'cd '"$_con_path"'; ls -ald $(compgen -d '"$cur"')')" || return 1
 
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 }
@@ -342,7 +350,7 @@ function __get_files()
     declare opts
 
     [ -z "$cur" ] && cur='./'
-    opts="$(nsenter -t "$_con_pid" -m -- sh -c 'cd '"$_con_path"'; ls -ald $(compgen -f '"$cur"')')" || return 1
+    opts="$(nsenter -t "$_con_pid" -m -- "$_con_sh" -c 'cd '"$_con_path"'; ls -ald $(compgen -f '"$cur"')')" || return 1
 
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 }
